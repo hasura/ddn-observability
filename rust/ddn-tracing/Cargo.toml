@@ -20,7 +20,12 @@ opentelemetry-zipkin = "0.20"
 tracing-subscriber = "0.3"
 
 [dev-dependencies]
+memory-collector = { path = "../memory-collector" }
+
+anyhow = "1"
 axum = "0.6"
+reqwest = "0.11"
+tokio = { version = "1", features = ["full"] }
 
 [package.metadata.cargo-machete]
 ignored = [

@@ -1,10 +1,13 @@
 use std::net;
 
-use memory_collector::serve;
+use tokio::net::TcpListener;
+
+use memory_collector::*;
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> anyhow::Result<()> {
     let address = net::SocketAddr::new(net::IpAddr::V6(net::Ipv6Addr::LOCALHOST), 50051);
-    serve(address).await?;
+    let listener = TcpListener::bind(address).await?;
+    serve(&State::new(), listener).await?;
     Ok(())
 }

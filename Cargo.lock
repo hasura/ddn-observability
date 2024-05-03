@@ -209,9 +209,11 @@ checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 name = "ddn-tracing"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "axum",
  "derive_more",
  "http",
+ "memory-collector",
  "opentelemetry",
  "opentelemetry-contrib",
  "opentelemetry-http",
@@ -219,6 +221,8 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry-zipkin",
  "opentelemetry_sdk",
+ "reqwest",
+ "tokio",
  "tracing-subscriber",
 ]
 
@@ -621,6 +625,7 @@ checksum = "6c8640c5d730cb13ebd907d8d04b52f55ac9a2eec55b440c8892f40d56c76c1d"
 name = "memory-collector"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "opentelemetry-proto",
  "tokio",
  "tonic",

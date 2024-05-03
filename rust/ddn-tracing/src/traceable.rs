@@ -15,6 +15,15 @@ pub trait TraceableError: core::fmt::Display + core::fmt::Debug {
     }
 }
 
+// `Infallible` has no inhabitants, so will never occur. This means that
+// `TraceableResult<T, Infallible>` is equivalent to `T`, and so it is always
+// traceable.
+impl TraceableError for std::convert::Infallible {
+    fn visibility(&self) -> ErrorVisibility {
+        match *self {}
+    }
+}
+
 pub trait Traceable {
     type ErrorType<'a>: TraceableError
     where

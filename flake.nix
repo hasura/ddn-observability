@@ -89,6 +89,7 @@
           cargo-nextest
           cargo-watch
 
+          grpcurl
           just
         ];
       };

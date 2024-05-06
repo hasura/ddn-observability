@@ -1,4 +1,3 @@
-use crate::tracer::Tracer;
 use opentelemetry::propagation::composite::TextMapCompositePropagator;
 use opentelemetry::{
     global::{self, BoxedTracer},
@@ -8,6 +7,8 @@ use opentelemetry::{
 use opentelemetry_otlp::{WithExportConfig, OTEL_EXPORTER_OTLP_ENDPOINT_DEFAULT};
 use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_semantic_conventions as semcov;
+
+use super::tracer::Tracer;
 
 pub fn start_tracer(
     endpoint: Option<&str>,

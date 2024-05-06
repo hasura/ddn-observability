@@ -11,7 +11,7 @@ use opentelemetry::trace::{
 use opentelemetry::{Context, Key};
 use opentelemetry_http::HeaderExtractor;
 
-use crate::traceable::{ErrorVisibility, Traceable, TraceableError};
+use super::traceable::{ErrorVisibility, Traceable, TraceableError};
 
 #[derive(Clone, Copy, derive_more::Display)]
 pub enum SpanVisibility {

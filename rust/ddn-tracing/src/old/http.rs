@@ -26,7 +26,7 @@
 //! }
 //! ```
 
-use crate::traceable::{ErrorVisibility, Traceable, TraceableError};
+use super::traceable::{ErrorVisibility, Traceable, TraceableError};
 
 /// Wrapper around `http::Response<T>` that is traceable in spans.
 ///

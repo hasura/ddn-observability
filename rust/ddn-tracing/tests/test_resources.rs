@@ -3,7 +3,7 @@ use std::net;
 use opentelemetry_semantic_conventions as semcov;
 use tokio::net::TcpListener;
 
-use ddn_tracing::*;
+use ddn_tracing::old::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn defines_resource_attributes() -> anyhow::Result<()> {

@@ -10,6 +10,9 @@ use opentelemetry_semantic_conventions as semcov;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 
+const DEFAULT_LEVEL: tracing::level_filters::LevelFilter =
+    tracing::level_filters::LevelFilter::INFO;
+
 pub struct GlobalTracing;
 
 /// Initialize a generic tracing setup that exports traces, and install it as
@@ -55,7 +58,16 @@ pub fn init_tracing(
                 .with_error_records_to_exceptions(true)
                 .with_tracer(tracer),
         )
-        .with(tracing_subscriber::fmt::layer().with_timer(tracing_subscriber::fmt::time::time()))
+        .with(
+            tracing_subscriber::EnvFilter::builder()
+                .with_default_directive(DEFAULT_LEVEL.into())
+                .from_env_lossy(),
+        )
+        .with(
+            tracing_subscriber::fmt::layer()
+                .json()
+                .with_timer(tracing_subscriber::fmt::time::time()),
+        )
         .init();
 
     Ok(GlobalTracing)

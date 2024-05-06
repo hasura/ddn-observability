@@ -11,7 +11,7 @@ pub fn start_tracer(
 ) -> Result<Tracer, Box<dyn Error + Send + Sync>> {
     // Do not drop the global tracing provider immediately.
     // This is handled by `shutdown_tracer` instead.
-    let _ = ManuallyDrop::new(crate::init_tracing(
+    let _ = ManuallyDrop::new(crate::setup::init_tracing(
         endpoint,
         service_name,
         service_version,

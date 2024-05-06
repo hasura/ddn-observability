@@ -1,8 +1,6 @@
 use opentelemetry_semantic_conventions as semcov;
 use tracing::{info_span, Instrument};
 
-use ddn_tracing::*;
-
 #[tokio::test(flavor = "multi_thread")]
 async fn defines_resource_attributes() -> anyhow::Result<()> {
     let service_name = "test-service";
@@ -12,9 +10,12 @@ async fn defines_resource_attributes() -> anyhow::Result<()> {
     let collector_server = memory_collector::serve_in_background(&collector_state).await?;
 
     let value = {
-        let _global_tracing =
-            init_tracing(Some(&collector_server.url()), service_name, service_version)
-                .map_err(|e| anyhow::anyhow!(e))?;
+        let _global_tracing = ddn_tracing::setup::init_tracing(
+            Some(&collector_server.url()),
+            service_name,
+            service_version,
+        )
+        .map_err(|e| anyhow::anyhow!(e))?;
 
         async { Ok::<_, std::convert::Infallible>(7) }
             .instrument(info_span!("defines_resource_attributes"))
@@ -59,7 +60,7 @@ async fn defines_resource_attributes() -> anyhow::Result<()> {
             })
         );
     } else {
-        anyhow::bail!("There should be exactly one resource span set.\nGot: {spans:?}");
+        anyhow::bail!("There should be exactly one resource span set.\nGot: {spans:#?}");
     }
 
     Ok(())

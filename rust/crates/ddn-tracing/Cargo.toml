@@ -10,22 +10,25 @@ workspace = true
 [dependencies]
 derive_more = "0.99"
 http = "0.2"
+hyper = "0.14"
 opentelemetry = "0.22"
 opentelemetry-contrib = "0.14"
 opentelemetry-http = "0.11"
 opentelemetry-otlp = "0.15"
-opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
 opentelemetry-semantic-conventions = "0.14"
 opentelemetry-zipkin = "0.20"
+opentelemetry_sdk = { version = "0.22", features = ["rt-tokio"] }
+tower-http = { version = "0.4", features = ["trace"] }
 tracing = "0.1"
 tracing-opentelemetry = "0.23"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 [dev-dependencies]
 memory-collector = { path = "../../testing/memory-collector" }
+test-servers = { path = "../../testing/test-servers" }
 
 anyhow = "1"
-axum = "0.6"
+reqwest = "0.11"
 tokio = { version = "1", features = ["full"] }
 
 [package.metadata.cargo-machete]

@@ -10,4 +10,9 @@ workspace = true
 [dependencies]
 anyhow = "1"
 async-trait = "0.1"
+axum = "0.6"
+nix = { version = "0.28", features = ["signal"] }
 tokio = { version = "1", features = ["full"] }
+
+[dev-dependencies]
+ddn-tracing = { path = "../../crates/ddn-tracing" }

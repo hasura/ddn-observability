@@ -10,6 +10,7 @@ use std::sync::RwLock;
 
 use opentelemetry_proto::tonic::collector::trace::v1::*;
 use tokio::net::TcpListener;
+use tokio::sync::Notify;
 use tonic::transport::server::{Router, TcpIncoming};
 use tonic::transport::Server;
 
@@ -28,6 +29,7 @@ pub mod proto {
 #[derive(Clone)]
 pub struct State {
     spans: Arc<RwLock<Vec<proto::ResourceSpans>>>,
+    notify: Arc<Notify>,
 }
 
 impl State {
@@ -35,6 +37,7 @@ impl State {
     pub fn new() -> Self {
         Self {
             spans: Arc::new(RwLock::new(Vec::new())),
+            notify: Arc::new(Notify::new()),
         }
     }
 
@@ -42,12 +45,18 @@ impl State {
     fn append(&self, mut resource_spans: Vec<proto::ResourceSpans>) {
         let mut spans = self.spans.write().unwrap();
         spans.append(&mut resource_spans);
+        self.notify.notify_one();
     }
 
     /// Gets all the spans recorded up until now.
     pub fn read(&self) -> Vec<proto::ResourceSpans> {
         let spans = self.spans.read().unwrap();
         spans.clone()
+    }
+
+    /// Wait for the next write.
+    pub async fn wait_for_next_write(&self) {
+        self.notify.notified().await;
     }
 }
 

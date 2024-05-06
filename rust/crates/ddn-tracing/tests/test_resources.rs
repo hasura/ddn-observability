@@ -1,29 +1,24 @@
 use opentelemetry_semantic_conventions as semcov;
-use tracing::{info_span, Instrument};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn defines_resource_attributes() -> anyhow::Result<()> {
-    let service_name = "test-service";
-    let service_version = "1.2.3";
-
     let collector_state = memory_collector::State::new();
     let collector_server = memory_collector::serve_in_background(&collector_state).await?;
 
-    let value = {
-        let _global_tracing = ddn_tracing::setup::init_tracing(
-            Some(&collector_server.url()),
-            service_name,
-            service_version,
-        )
-        .map_err(|e| anyhow::anyhow!(e))?;
+    let example_server =
+        test_servers::example::start_example("echo-server", &collector_server.url()).await?;
 
-        async { Ok::<_, std::convert::Infallible>(7) }
-            .instrument(info_span!("defines_resource_attributes"))
-            .await?
-    };
+    let response = reqwest::Client::new()
+        .post(example_server.url() + "/echo")
+        .body("Hello there!")
+        .send()
+        .await?;
 
-    assert_eq!(value, 7);
+    let response_body = response.text().await?;
 
+    assert_eq!(response_body, "Hello there!");
+
+    collector_state.wait_for_next_write().await;
     let spans = collector_state.read();
     if let [memory_collector::proto::ResourceSpans {
         resource: Some(memory_collector::proto::Resource { attributes, .. }),
@@ -39,7 +34,7 @@ async fn defines_resource_attributes() -> anyhow::Result<()> {
                 key: semcov::resource::SERVICE_NAME.to_string(),
                 value: Some(memory_collector::proto::AnyValue {
                     value: Some(memory_collector::proto::any_value::Value::StringValue(
-                        service_name.to_string()
+                        example_server.name.clone()
                     ))
                 })
             })
@@ -54,13 +49,17 @@ async fn defines_resource_attributes() -> anyhow::Result<()> {
                 key: semcov::resource::SERVICE_VERSION.to_string(),
                 value: Some(memory_collector::proto::AnyValue {
                     value: Some(memory_collector::proto::any_value::Value::StringValue(
-                        service_version.to_string()
+                        env!("CARGO_PKG_VERSION").to_owned()
                     ))
                 })
             })
         );
     } else {
-        anyhow::bail!("There should be exactly one resource span set.\nGot: {spans:#?}");
+        anyhow::bail!(
+            "There should be exactly one resource span set.\nGot {}: {:#?}",
+            spans.len(),
+            spans
+        );
     }
 
     Ok(())

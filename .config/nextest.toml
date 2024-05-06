@@ -1,0 +1,4 @@
+[profile.default]
+leak-timeout = "1s"
+slow-timeout.period = "10s"
+slow-timeout.terminate-after = 3

@@ -1,4 +1,6 @@
+pub mod example;
 pub mod server;
+pub mod termination;
 
 mod latch;
 

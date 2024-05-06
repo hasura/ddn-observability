@@ -3,7 +3,8 @@ use std::net;
 use opentelemetry_semantic_conventions as semcov;
 use tokio::net::TcpListener;
 
-use ddn_tracing::old::*;
+use ddn_tracing::*;
+use tracing::{info_span, Instrument};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn defines_resource_attributes() -> anyhow::Result<()> {
@@ -17,24 +18,16 @@ async fn defines_resource_attributes() -> anyhow::Result<()> {
     let _collector_server =
         memory_collector::serve_in_background(&collector_state, server_listener)?;
 
-    let _tracer = start_tracer(Some(&server_endpoint), service_name, service_version)?;
+    let value = {
+        let _global_tracing = init_tracing(Some(&server_endpoint), service_name, service_version)
+            .map_err(|e| anyhow::anyhow!(e))?;
 
-    let tracer = global_tracer();
-    tracer
-        .in_span_async(
-            "defines_resource_attributes",
-            "defines resource attributes".to_string(),
-            SpanVisibility::Internal,
-            || {
-                Box::pin(async {
-                    // do nothing
-                    Ok::<(), std::convert::Infallible>(())
-                })
-            },
-        )
-        .await?;
+        async { Ok::<_, std::convert::Infallible>(7) }
+            .instrument(info_span!("defines_resource_attributes"))
+            .await?
+    };
 
-    shutdown_tracer();
+    assert_eq!(value, 7);
 
     let spans = collector_state.read();
     if let [memory_collector::proto::ResourceSpans {

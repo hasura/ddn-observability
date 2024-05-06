@@ -8,7 +8,7 @@ license.workspace = true
 workspace = true
 
 [dependencies]
-ddn-observability-testing = { path = "../testing" }
+test-servers = { path = "../test-servers" }
 
 anyhow = "1"
 opentelemetry-proto = "0.5"

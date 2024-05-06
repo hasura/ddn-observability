@@ -22,11 +22,10 @@ tracing-opentelemetry = "0.23"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 
 [dev-dependencies]
-memory-collector = { path = "../memory-collector" }
+memory-collector = { path = "../../testing/memory-collector" }
 
 anyhow = "1"
 axum = "0.6"
-reqwest = "0.11"
 tokio = { version = "1", features = ["full"] }
 
 [package.metadata.cargo-machete]

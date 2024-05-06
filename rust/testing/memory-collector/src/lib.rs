@@ -8,14 +8,13 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;
 
-use ddn_observability_testing::server::BackgroundServer;
 use opentelemetry_proto::tonic::collector::trace::v1::*;
 use tokio::net::TcpListener;
 use tonic::transport::server::{Router, TcpIncoming};
 use tonic::transport::Server;
 
-use ddn_observability_testing::async_trait;
-use ddn_observability_testing::server::BackgroundServerBuilder;
+use test_servers::async_trait;
+use test_servers::server::{BackgroundServer, BackgroundServerBuilder};
 
 pub mod proto {
     pub use opentelemetry_proto::tonic::common::v1::*;
@@ -132,8 +131,7 @@ impl BackgroundServerBuilder for BackgroundTracingServer {
 ///
 /// Runs in the background.
 pub async fn serve_in_background(state: &State) -> anyhow::Result<BackgroundServer> {
-    ddn_observability_testing::server::serve_in_background(BackgroundTracingServer::new(state))
-        .await
+    test_servers::server::serve_in_background(BackgroundTracingServer::new(state)).await
 }
 
 fn create_router(state: &State) -> Router {

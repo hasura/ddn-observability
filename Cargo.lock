@@ -215,16 +215,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
-name = "ddn-observability-testing"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "async-trait",
- "opentelemetry-proto",
- "tokio",
-]
-
-[[package]]
 name = "ddn-tracing"
 version = "0.1.0"
 dependencies = [
@@ -240,7 +230,6 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry-zipkin",
  "opentelemetry_sdk",
- "reqwest",
  "tokio",
  "tracing",
  "tracing-opentelemetry",
@@ -662,8 +651,8 @@ name = "memory-collector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "ddn-observability-testing",
  "opentelemetry-proto",
+ "test-servers",
  "tokio",
  "tonic",
 ]
@@ -1418,6 +1407,15 @@ dependencies = [
  "fastrand",
  "rustix",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "test-servers"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "tokio",
 ]
 
 [[package]]

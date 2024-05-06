@@ -20,10 +20,15 @@ pub struct GlobalTracing;
 ///
 /// The tracing provider will be unregistered on drop.
 ///
-/// All configuration is done by standard environment variables:
+/// Most configuration is done by standard environment variables:
 ///
 ///   * https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/
 ///   * https://opentelemetry.io/docs/languages/sdk-configuration/otlp-exporter/
+///
+/// The endpoint can be overridden here by passing a value for the endpoint.
+///
+/// The service name and version get special treatment as we consider them
+/// mandatory.
 pub fn init_tracing(
     endpoint: Option<&str>,
     service_name: &'static str,

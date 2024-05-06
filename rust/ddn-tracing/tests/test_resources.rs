@@ -1,26 +1,20 @@
-use std::net;
-
 use opentelemetry_semantic_conventions as semcov;
-use tokio::net::TcpListener;
+use tracing::{info_span, Instrument};
 
 use ddn_tracing::*;
-use tracing::{info_span, Instrument};
 
 #[tokio::test(flavor = "multi_thread")]
 async fn defines_resource_attributes() -> anyhow::Result<()> {
     let service_name = "test-service";
     let service_version = "1.2.3";
 
-    let server_listener = TcpListener::bind((net::IpAddr::V6(net::Ipv6Addr::LOCALHOST), 0)).await?;
-    let server_address = server_listener.local_addr()?;
-    let server_endpoint = format!("http://[{}]:{}", server_address.ip(), server_address.port());
     let collector_state = memory_collector::State::new();
-    let _collector_server =
-        memory_collector::serve_in_background(&collector_state, server_listener)?;
+    let collector_server = memory_collector::serve_in_background(&collector_state).await?;
 
     let value = {
-        let _global_tracing = init_tracing(Some(&server_endpoint), service_name, service_version)
-            .map_err(|e| anyhow::anyhow!(e))?;
+        let _global_tracing =
+            init_tracing(Some(&collector_server.url()), service_name, service_version)
+                .map_err(|e| anyhow::anyhow!(e))?;
 
         async { Ok::<_, std::convert::Infallible>(7) }
             .instrument(info_span!("defines_resource_attributes"))

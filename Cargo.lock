@@ -215,6 +215,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
 
 [[package]]
+name = "ddn-observability-testing"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "opentelemetry-proto",
+ "tokio",
+]
+
+[[package]]
 name = "ddn-tracing"
 version = "0.1.0"
 dependencies = [
@@ -652,6 +662,7 @@ name = "memory-collector"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ddn-observability-testing",
  "opentelemetry-proto",
  "tokio",
  "tonic",

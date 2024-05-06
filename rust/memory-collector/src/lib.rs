@@ -3,16 +3,19 @@
 //! This will gather any spans sent via gRPC and store the deserialized Protocol
 //! Buffers structures. They can later be read.
 
-use std::net::SocketAddr;
+use std::net;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::RwLock;
 
+use ddn_observability_testing::server::BackgroundServer;
+use opentelemetry_proto::tonic::collector::trace::v1::*;
 use tokio::net::TcpListener;
-use tokio::sync::Notify;
 use tonic::transport::server::{Router, TcpIncoming};
 use tonic::transport::Server;
 
-use opentelemetry_proto::tonic::collector::trace::v1::*;
+use ddn_observability_testing::async_trait;
+use ddn_observability_testing::server::BackgroundServerBuilder;
 
 pub mod proto {
     pub use opentelemetry_proto::tonic::common::v1::*;
@@ -21,6 +24,8 @@ pub mod proto {
 }
 
 /// The collector state. Create a new one to use it.
+///
+/// A clone of this will share the underlying state.
 #[derive(Clone)]
 pub struct State {
     spans: Arc<RwLock<Vec<proto::ResourceSpans>>>,
@@ -75,43 +80,60 @@ impl trace_service_server::TraceService for TraceServiceHandler {
     }
 }
 
-/// A reference to a tracing server running in the background, which will shut
-/// it down on drop.
-pub struct TracingServer {
-    shutdown: Arc<Notify>,
-}
-
-impl Drop for TracingServer {
-    fn drop(&mut self) {
-        self.shutdown.notify_one();
-    }
-}
-
 /// Creates a new in-memory collection server on the specified address.
 ///
 /// Runs in the foreground.
-pub async fn serve(state: &State, address: impl Into<SocketAddr>) -> anyhow::Result<()> {
+pub async fn serve(state: &State, address: impl Into<net::SocketAddr>) -> anyhow::Result<()> {
     let router = create_router(state);
     router.serve(address.into()).await?;
     Ok(())
 }
 
+pub struct BackgroundTracingServer {
+    state: State,
+}
+
+impl BackgroundTracingServer {
+    pub fn new(state: &State) -> Self {
+        Self {
+            state: state.clone(),
+        }
+    }
+}
+
+#[async_trait]
+impl BackgroundServerBuilder for BackgroundTracingServer {
+    type Server = (Router, TcpIncoming);
+
+    async fn create_server(&self) -> anyhow::Result<(Self::Server, net::SocketAddr)> {
+        let router = create_router(&self.state);
+
+        let listener = TcpListener::bind((net::IpAddr::V6(net::Ipv6Addr::LOCALHOST), 0)).await?;
+        let address = listener.local_addr()?;
+        let incoming = TcpIncoming::from_listener(listener, false, None)
+            .map_err(|error| anyhow::anyhow!(error))?;
+
+        Ok(((router, incoming), address))
+    }
+
+    async fn start_server(
+        &self,
+        (router, incoming): Self::Server,
+        shutdown_signal: Pin<Box<dyn std::future::Future<Output = ()> + Send + Sync>>,
+    ) -> () {
+        router
+            .serve_with_incoming_shutdown(incoming, shutdown_signal)
+            .await
+            .unwrap();
+    }
+}
+
 /// Creates a new in-memory collection server on the specified TCP listener.
 ///
 /// Runs in the background.
-pub fn serve_in_background(state: &State, listener: TcpListener) -> anyhow::Result<TracingServer> {
-    let router = create_router(state);
-    let incoming = TcpIncoming::from_listener(listener, false, None)
-        .map_err(|error| anyhow::anyhow!(error))?;
-    let shutdown = Arc::new(Notify::new());
-    let shutdown_inner = Arc::clone(&shutdown);
-    tokio::task::spawn(async move {
-        router
-            .serve_with_incoming_shutdown(incoming, shutdown_inner.notified())
-            .await
-            .unwrap();
-    });
-    Ok(TracingServer { shutdown })
+pub async fn serve_in_background(state: &State) -> anyhow::Result<BackgroundServer> {
+    ddn_observability_testing::server::serve_in_background(BackgroundTracingServer::new(state))
+        .await
 }
 
 fn create_router(state: &State) -> Router {

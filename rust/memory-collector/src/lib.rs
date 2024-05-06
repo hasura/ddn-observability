@@ -1,3 +1,9 @@
+//! An in-memory tracing collector, used for testing.
+//!
+//! This will gather any spans sent via gRPC and store the deserialized Protocol
+//! Buffers structures. They can later be read.
+
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::RwLock;
 
@@ -14,23 +20,27 @@ pub mod proto {
     pub use opentelemetry_proto::tonic::trace::v1::*;
 }
 
+/// The collector state. Create a new one to use it.
 #[derive(Clone)]
 pub struct State {
     spans: Arc<RwLock<Vec<proto::ResourceSpans>>>,
 }
 
 impl State {
+    /// Creates a new state.
     pub fn new() -> Self {
         Self {
             spans: Arc::new(RwLock::new(Vec::new())),
         }
     }
 
-    pub fn append(&self, mut resource_spans: Vec<proto::ResourceSpans>) {
+    /// Appends a new set of spans to the list.
+    fn append(&self, mut resource_spans: Vec<proto::ResourceSpans>) {
         let mut spans = self.spans.write().unwrap();
         spans.append(&mut resource_spans);
     }
 
+    /// Gets all the spans recorded up until now.
     pub fn read(&self) -> Vec<proto::ResourceSpans> {
         let spans = self.spans.read().unwrap();
         spans.clone()
@@ -43,6 +53,7 @@ impl Default for State {
     }
 }
 
+/// Handles traces by storing them in the in-memory state.
 struct TraceServiceHandler {
     state: State,
 }
@@ -64,6 +75,8 @@ impl trace_service_server::TraceService for TraceServiceHandler {
     }
 }
 
+/// A reference to a tracing server running in the background, which will shut
+/// it down on drop.
 pub struct TracingServer {
     shutdown: Arc<Notify>,
 }
@@ -74,14 +87,18 @@ impl Drop for TracingServer {
     }
 }
 
-pub async fn serve(state: &State, listener: TcpListener) -> anyhow::Result<()> {
+/// Creates a new in-memory collection server on the specified address.
+///
+/// Runs in the foreground.
+pub async fn serve(state: &State, address: impl Into<SocketAddr>) -> anyhow::Result<()> {
     let router = create_router(state);
-    let incoming = TcpIncoming::from_listener(listener, false, None)
-        .map_err(|error| anyhow::anyhow!(error))?;
-    router.serve_with_incoming(incoming).await?;
+    router.serve(address.into()).await?;
     Ok(())
 }
 
+/// Creates a new in-memory collection server on the specified TCP listener.
+///
+/// Runs in the background.
 pub fn serve_in_background(state: &State, listener: TcpListener) -> anyhow::Result<TracingServer> {
     let router = create_router(state);
     let incoming = TcpIncoming::from_listener(listener, false, None)

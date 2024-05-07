@@ -2,7 +2,7 @@ use std::io;
 use std::net;
 use std::time::Duration;
 
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use tokio::process;
 use tokio::time::sleep;
 
@@ -71,7 +71,7 @@ pub async fn start_example(name: &str, otel_endpoint: &str) -> anyhow::Result<Ex
         .wait()
         .await?;
 
-    let address = find_free_port().await?;
+    let address = find_free_port()?;
     let port = address.port();
     let child = process::Command::new("cargo")
         .args(["run", "--quiet", "--example", name])
@@ -89,10 +89,12 @@ pub async fn start_example(name: &str, otel_endpoint: &str) -> anyhow::Result<Ex
     Ok(wrapped)
 }
 
-async fn find_free_port() -> io::Result<net::SocketAddr> {
-    let address = net::SocketAddr::new(net::IpAddr::V6(net::Ipv6Addr::LOCALHOST), 0);
-    let listener = TcpListener::bind(address).await?;
-    listener.local_addr()
+fn find_free_port() -> io::Result<net::SocketAddr> {
+    tokio::task::block_in_place(|| {
+        let address = net::SocketAddr::new(net::IpAddr::V6(net::Ipv6Addr::LOCALHOST), 0);
+        let listener = net::TcpListener::bind(address)?;
+        listener.local_addr()
+    })
 }
 
 async fn wait_for_port(address: net::SocketAddr) -> anyhow::Result<()> {

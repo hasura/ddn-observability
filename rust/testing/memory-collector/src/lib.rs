@@ -14,7 +14,6 @@ use tokio::sync::Notify;
 use tonic::transport::server::{Router, TcpIncoming};
 use tonic::transport::Server;
 
-use test_servers::async_trait;
 use test_servers::server::{BackgroundServer, BackgroundServerBuilder};
 
 pub mod proto {
@@ -109,7 +108,7 @@ impl BackgroundTracingServer {
     }
 }
 
-#[async_trait]
+#[test_servers::async_trait]
 impl BackgroundServerBuilder for BackgroundTracingServer {
     type Server = (Router, TcpIncoming);
 

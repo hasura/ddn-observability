@@ -31,6 +31,13 @@ async fn main() -> anyhow::Result<()> {
                 body
             }),
         )
+        .route(
+            "/health",
+            axum::routing::get(|| async {
+                tracing::info!(path = "/health");
+                http::StatusCode::OK
+            }),
+        )
         .layer(ddn_tracing::http_server::layer());
 
     let server = axum::Server::bind(&address).serve(app.into_make_service());

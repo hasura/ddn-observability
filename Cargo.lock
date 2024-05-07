@@ -1444,7 +1444,9 @@ dependencies = [
  "async-trait",
  "axum",
  "ddn-tracing",
+ "http",
  "nix",
+ "reqwest",
  "tokio",
 ]
 

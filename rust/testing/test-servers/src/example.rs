@@ -1,3 +1,4 @@
+use std::future::Future;
 use std::io;
 use std::net;
 use std::time::Duration;
@@ -56,16 +57,22 @@ impl Drop for Example {
 /// The server will be built and run through `cargo` on demand.
 ///
 /// This function finds a free port and assigns it to the server process through
-/// the `PORT` variable, then waits for the server to start on that port.
+/// the `PORT` variable. It then waits for the server to start, first by
+/// attempting to connect to the port, and then making a request to the
+/// "/health" path. It only returns once these two checks have passed.
 ///
 /// On success, the return value contains the process information. The process
 /// will automatically be terminated when the value is dropped.
 ///
 /// This will return an error on build failure, or if the server fails to start
 /// on the specified port.
-pub async fn start_example(name: &str, otel_endpoint: &str) -> anyhow::Result<Example> {
+pub async fn start_example(
+    name: &str,
+    otel_endpoint: &str,
+    environment: Vec<(&str, &str)>,
+) -> anyhow::Result<Example> {
     process::Command::new("cargo")
-        .args(["build", "--quiet", "--example", name])
+        .args(["build", "--example", name])
         .current_dir(env!("CARGO_MANIFEST_DIR"))
         .spawn()?
         .wait()
@@ -73,8 +80,10 @@ pub async fn start_example(name: &str, otel_endpoint: &str) -> anyhow::Result<Ex
 
     let address = find_free_port()?;
     let port = address.port();
+    println!("Starting {name} on {address}...");
     let child = process::Command::new("cargo")
-        .args(["run", "--quiet", "--example", name])
+        .args(["run", "--example", name])
+        .envs(environment)
         .env("OTEL_EXPORTER_OTLP_ENDPOINT", otel_endpoint)
         .env("OTEL_BSP_SCHEDULE_DELAY", "100") // send batches very quickly
         .env("PORT", port.to_string())
@@ -86,6 +95,7 @@ pub async fn start_example(name: &str, otel_endpoint: &str) -> anyhow::Result<Ex
         child,
     };
     wait_for_port(address).await?;
+    wait_until_healthy(address).await?;
     Ok(wrapped)
 }
 
@@ -98,17 +108,56 @@ fn find_free_port() -> io::Result<net::SocketAddr> {
 }
 
 async fn wait_for_port(address: net::SocketAddr) -> anyhow::Result<()> {
+    let _ = wait_for(
+        || TcpStream::connect(address),
+        Duration::from_secs(1),
+        &format!("opening {address}"),
+    )
+    .await?;
+    Ok(())
+}
+
+async fn wait_until_healthy(address: net::SocketAddr) -> anyhow::Result<()> {
+    let url = format!("http://{address}/health");
+    wait_for(
+        || async {
+            reqwest::get(&url).await.map_err(|_| ()).and_then(|r| {
+                if r.status().is_success() {
+                    Ok(())
+                } else {
+                    Err(())
+                }
+            })
+        },
+        Duration::from_secs(1),
+        &format!("checking for health of {address}"),
+    )
+    .await
+}
+
+async fn wait_for<T, E, F, Action>(
+    action: Action,
+    timeout: Duration,
+    description: &str,
+) -> anyhow::Result<T>
+where
+    F: Future<Output = Result<T, E>>,
+    Action: Fn() -> F,
+{
     tokio::select! {
-        () = repeatedly_try_to_connect(address) => Ok(()),
-        () = sleep(Duration::from_secs(1)) => Err(anyhow::anyhow!("Gave up waiting for {address} to open.")),
+        value = repeatedly(action) => Ok(value),
+        () = sleep(timeout) => Err(anyhow::anyhow!("Gave up waiting: {description}")),
     }
 }
 
-async fn repeatedly_try_to_connect(address: net::SocketAddr) {
+async fn repeatedly<T, E, F, Action>(action: Action) -> T
+where
+    F: Future<Output = Result<T, E>>,
+    Action: Fn() -> F,
+{
     loop {
-        let result = TcpStream::connect(address).await;
-        if result.is_ok() {
-            return;
+        if let Ok(value) = action().await {
+            return value;
         }
     }
 }

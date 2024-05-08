@@ -1446,8 +1446,10 @@ dependencies = [
  "ddn-tracing",
  "http",
  "nix",
+ "opentelemetry",
  "reqwest",
  "tokio",
+ "tracing-opentelemetry",
 ]
 
 [[package]]

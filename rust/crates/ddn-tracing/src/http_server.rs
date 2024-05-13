@@ -20,7 +20,7 @@ pub fn layer() -> TraceLayer<
 
 /// A custom object for making spans.
 #[derive(Clone)]
-pub struct MakeRequestSpan {}
+pub struct MakeRequestSpan;
 
 impl MakeSpan<Body> for MakeRequestSpan {
     fn make_span(&mut self, request: &Request<Body>) -> Span {

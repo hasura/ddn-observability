@@ -11,7 +11,7 @@ use tracing_opentelemetry::OpenTelemetrySpanExt;
 ///
 /// If trace parent headers are specified in the incoming request, they will be
 /// adopted and used as the span parent.
-pub fn layer<'a>() -> TraceLayer<
+pub fn layer() -> TraceLayer<
     tower_http::classify::SharedClassifier<tower_http::classify::ServerErrorsAsFailures>,
     MakeRequestSpan,
 > {

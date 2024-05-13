@@ -3,7 +3,6 @@
 use std::error::Error;
 
 use opentelemetry::propagation::composite::TextMapCompositePropagator;
-use opentelemetry::trace::{TraceContextExt as _, Tracer as _};
 use opentelemetry::{global, KeyValue};
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::propagation::TraceContextPropagator;
@@ -15,12 +14,12 @@ const DEFAULT_LEVEL: tracing::level_filters::LevelFilter =
     tracing::level_filters::LevelFilter::INFO;
 
 pub struct GlobalTracing {
-    context: opentelemetry::Context,
+    tracer: opentelemetry::global::BoxedTracer,
 }
 
 impl GlobalTracing {
-    pub fn context(&self) -> opentelemetry::Context {
-        self.context.clone()
+    pub fn get_tracer(&self) -> &opentelemetry::global::BoxedTracer {
+        &self.tracer
     }
 }
 
@@ -91,8 +90,6 @@ pub fn init_tracing(
         .init();
 
     let tracer = global::tracer(service_name);
-    let root_span = tracer.start("init");
-    let context = opentelemetry::Context::current_with_span(root_span);
 
-    Ok(GlobalTracing { context })
+    Ok(GlobalTracing { tracer })
 }

@@ -9,9 +9,7 @@ use std::env;
 use std::net;
 
 use ddn_tracing::tracing;
-use opentelemetry::trace::TraceContextExt;
 use test_servers::termination::wait_for_termination;
-use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 const DEFAULT_PORT: u16 = 9002;
 
@@ -35,7 +33,7 @@ async fn main() -> anyhow::Result<()> {
 
     let service_name = env!("CARGO_BIN_NAME");
     let service_version = env!("CARGO_PKG_VERSION");
-    let global_tracing = ddn_tracing::setup::init_tracing(None, service_name, service_version)
+    let _global_tracing = ddn_tracing::setup::init_tracing(None, service_name, service_version)
         .map_err(|e| anyhow::anyhow!(e))?;
 
     let client = reqwest::Client::new();
@@ -43,18 +41,11 @@ async fn main() -> anyhow::Result<()> {
         .fallback(
             move |method: http::method::Method, request_uri: http::uri::Uri, body: String| {
                 async move {
-                    eprintln!("current span: {:?}", tracing::Span::current());
-                    eprintln!("current span context: {:?}", tracing::Span::current().context());
-                    opentelemetry::trace::get_active_span(|span| {
-                        eprintln!("current span (again): {:?}", span);
-                        eprintln!("current span context (again): {:?}", span.span_context());
-                        eprintln!("current span context is valid: {:?}", span.span_context().is_valid());
-                    });
-
-                    tracing::info!(uri = %request_uri, body);
+                    let span = tracing::info_span!("request", uri = %request_uri, body);
                     let mut target_uri_builder = http::uri::Uri::builder()
                         .scheme(target_uri_scheme)
                         .authority(target_uri_authority);
+
                     target_uri_builder = match request_uri.path_and_query() {
                         None => target_uri_builder,
                         Some(path_and_query) => {
@@ -62,9 +53,12 @@ async fn main() -> anyhow::Result<()> {
                         }
                     };
                     let target_uri = target_uri_builder.build().unwrap().to_string();
+
+                    let trace_headers = ddn_tracing::http_client::trace_headers_for_span(span);
+
                     let response = client
                         .request(method, target_uri)
-                        .headers(ddn_tracing::http_client::trace_headers())
+                        .headers(trace_headers)
                         .body(body)
                         .send()
                         .await
@@ -73,7 +67,7 @@ async fn main() -> anyhow::Result<()> {
                 }
             },
         )
-        .layer(ddn_tracing::http_server::layer(global_tracing.context()));
+        .layer(ddn_tracing::http_server::layer());
 
     let server = axum::Server::bind(&address).serve(app.into_make_service());
     let address = server.local_addr();
